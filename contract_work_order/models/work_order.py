@@ -107,13 +107,29 @@ class WorkOrder(models.Model):
         sale_id = False
         partner_id = self.partner_id.id
         date_order = self.datetime_done
+        # Vals llama a la función de sale onchange_partner para obtener
+        #  un diccionario con datos del partner, de interés al crear pedidos.
+        # {'value': 
+        #        {
+        #            'partner_invoice_id': , 
+        #            'partner_shipping_id': ,  
+        #            'payment_term': , 
+        #            'fiscal_position': ,
+        #            'user_id': ,
+        #            'pricelist_id': ,
+        #            'section_id': ,
+        #        }
+        #    } 
         vals = self.env['sale.order'].onchange_partner_id(partner_id,
                                                       context=self._context)
         values = vals['value']
         pricelist_id = values['pricelist_id']
-        if self.to_invoice:
-            lines = []
-            for line in self.line_ids:
+        # Esta línea da error porque no existe el campo to_invoice en el work order.
+        #if self.to_invoice:
+        
+        lines = []
+        for line in self.line_ids:
+            if line.to_invoice:
                 line_values = {}
                 product_id = line.product_id.id
                 product_uom_id = line.product_uom_id.id
@@ -140,15 +156,18 @@ class WorkOrder(models.Model):
                                'product_uom_id': product_uom_id,
                        })
                 lines.append((0, 0, line_values))
-            values.update({'partner_id': self.partner_id.id,
-                           'date_order': self.datetime_done,
-                           'project_id': self.project_id.id,
-                           'partner_invoice_id': self.partner_invoice_id.id,
-                           'partner_shipping_id': self.partner_shipping_id.id,
-                           'order_line': lines,
-                           'maintenance_sale': True
-                           })
-            sale_id = self.env['sale.order'].create(values)
+        values.update({'partner_id': self.partner_id.id,
+                       'date_order': self.datetime_done,
+                       'project_id': self.project_id.id,
+                       # Estos dos campos no están definidos en 
+                       # maintenance.work.order, se dejan los valores por
+                       # defecto que nos da la función onchange_partner_id.
+                       #'partner_invoice_id': self.partner_invoice_id.id,
+                       #'partner_shipping_id': self.partner_shipping_id.id,
+                       'order_line': lines,
+                       'maintenance_sale': True
+                       })
+        sale_id = self.env['sale.order'].create(values)
         #return False
         return sale_id.id
 
