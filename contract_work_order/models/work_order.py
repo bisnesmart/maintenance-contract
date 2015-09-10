@@ -96,7 +96,9 @@ class WorkOrder(models.Model):
         self.state = 'done'
         self.datetime_done = fields.Datetime.now()
         for sale in self:
-            sale.sale_id = sale.make_sale()[0]
+            # Sólo se llama a la función si hay líneas a facturar.
+            if len(sale.line_ids) > 0 and any(line.to_invoice for line in sale.line_ids):
+                sale.sale_id = sale.make_sale()[0]
 
     @api.multi
     def work_cancel(self):
@@ -156,6 +158,7 @@ class WorkOrder(models.Model):
                                'product_uom_id': product_uom_id,
                        })
                 lines.append((0, 0, line_values))
+ 
         values.update({'partner_id': self.partner_id.id,
                        'date_order': self.datetime_done,
                        'project_id': self.project_id.id,

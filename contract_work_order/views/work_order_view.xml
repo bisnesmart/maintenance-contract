@@ -27,7 +27,7 @@
                                     context="{'search_default_customer':1, 'show_address': 1}"
                                     options='{"always_reload": True}' readonly='0' />
                                 <field name="project_id"
-                                    context="{'partner_id':child.partner_id, 'manager_id': uid, 'default_name':name, 'default_type': 'contract'}"
+                                    context="{'partner_id':partner_id, 'manager_id': uid, 'default_name':name, 'default_type': 'contract'}"
                                     groups="sale.group_analytic_accounting" domain="[('type','in',['view','normal','contract'])]"
                                     readonly='0' />
                             </group>
@@ -51,7 +51,7 @@
                                                 context="{'partner_id':parent.partner_id, 'quantity':product_uom_qty, 'uom':product_uom_id}" />
                                             <field name="product_uom_id" groups="product.group_uom"
                                                 options='{"no_open": True}' />
-                                            <field name="to_invoice" readonly="1" />
+                                            <field name="to_invoice"  />
                                         </tree>
                                         <form>
                                             <group name="general">
@@ -61,7 +61,7 @@
                                                     context="{'partner_id':parent.partner_id, 'quantity':product_uom_qty, 'uom':product_uom_id}" />
                                                 <field name="product_uom_id" groups="product.group_uom"
                                                     options='{"no_open": True}' />
-                                                <field name="to_invoice" readonly="1" />
+                                                <field name="to_invoice" />
                                             </group>
                                             <group string="Description" name="description">
                                                 <field name="work_description" nolabel="1" />
