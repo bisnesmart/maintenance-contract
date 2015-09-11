@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+
+        <record model="ir.ui.view" id="view_work_order_project_form">
+            <field name="name">Work Order Project</field>
+            <field name="model">maintenance.work.order</field>
+            <field name="inherit_id" ref="contract_work_order.view_work_order_form" />
+            <field name="arch" type="xml">
+               <xpath expr='//field[@name="project_id"]' position='after'>
+
+                                <field name="project_project_id"
+                                    context="{'partner_id':partner_id, 'manager_id': technician_id, 'default_name':name }"
+                                    readonly='0' />
+                                <field name="technician_id" />
+
+                </xpath>
+                         
+            </field>
+        </record>
+    </data>
+</openerp>

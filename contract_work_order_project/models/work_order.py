@@ -27,15 +27,19 @@ class WorkOrder(models.Model):
     _inherit = 'maintenance.work.order'
 
 
-    def _get_stages(self):
+    def _get_stages(self,names=False):
         """
         Obtener las etapas del proyecto.
         """
         stages=[]
+        if type(names) is str:
+            names = [names]
+        elif not names:
+            names = ['PENDIENTE','SI','NO','REG','BIEN','MAL']
         stages.extend(
             [
             etapa.id for etapa in self.env['project.task.type'].search(
-                [('name', 'in', ['PENDIENTE','SI','NO','REG','BIEN','MAL'])]
+                [('name', 'in', names)]
             )
             ]
         )
@@ -43,16 +47,25 @@ class WorkOrder(models.Model):
         return stages
 
 
-    # Función tipo oncreate que genere un project en el que cada línea de
-    # la work order sea una tarea. 
+    technician_id = fields.Many2one(
+        string='Técnico asignado',
+        comodel_name='res.users',
+        ondelete='set null')
     # Si es un producto tipo servicio, es una tarea tal y como lo teníamos pensado
     # Si es un producto tipo 'product', a lo mejor queremos cambiarle el formato, 
     # aunque con la clasificación de sí, no, de momento va que chuta, luego podemos
     # sacar el informe de otra manera sin tocar más 
 
-    # Va a hacer falta meter las líneas en las modificaciones también. 
+    # Proyecto asociado a la orden de trabajo. 
+    project_project_id = fields.Many2one(string="Project",
+        comodel_name='project.project',ondelete='set null')
+
+ 
     @api.model
     def create(self, vals):
+        """
+        Crea un proyecto a partir de los datos de la orden de trabajo
+        """
         vals_project={}
         if vals.get('name', '/') == '/':
             vals['name'] = self.env['ir.sequence'].get(
@@ -64,30 +77,71 @@ class WorkOrder(models.Model):
         #-------------------
         # Obtener valores que pasarle a la creación del proyecto
 
+        contract_id = vals.get('project_id', False)
+        if contract_id:
+            contrato = self.env['account.analytic.account'].search(
+                [('id','=',contract_id)]
+                )
+        technician_id = contrato.manager_id.id
 
 
         vals_project.update(
                 {
                     'name': vals.get('name', 'Proyecto '+vals.get('id','pendiente')),
-                    'analytic_account_id': vals.get('project_id', False),
+                    'analytic_account_id': contract_id,
                     'active': True,
-                    'sequence': 2,
-                    # Meter en módulo nuevo:
-                    #'members': 
+                    'sequence': 2, 
                     'type_ids': [(6,0,self._get_stages())],
                     'use_tasks': True,
-                    'use_timesheet': True
+                    'use_timesheets': True,
+                    'manager_id': technician_id,
+                    'members': [(6,0,[technician_id])],
 
                 }
             )
-        #self.env['project.project'].create(vals_project)
+        vals_task = []
+        proyecto = self.env['project.project'].create(vals_project)
 
-        # Asociar al contrato que en work.order tenemos referenciado por project_id
+        for line in contrato.recurring_invoice_line_ids:
+            nombre_categoria = line.product_id.categ_id.name or 'Categoria'
+            project_category_ids = self.env['project.category'].search(
+                [('name','ilike',nombre_categoria)]
+                ) 
+            if project_category_ids:
+                vals_task.append(
+                {
+                # product.product no tiene name
+                'name': line.product_id.product_tmpl_id.name or 'Nombre de tarea',
+                'categ_ids': [(6,0,[project_cat.id for project_cat in project_category_ids])],
+                'project_id': proyecto.id,
+                'stage_id': self._get_stages('PENDIENTE')[0]
+                }
+                )
+            else:
+                vals_task.append(
+                {
+                # product.product no tiene name
+                'name': line.product_id.product_tmpl_id.name or 'Nombre de tarea',
+                'project_id': proyecto.id,
+                'stage_id': self._get_stages('PENDIENTE')[0]
+                })
 
-        # Crear o cargar id de etapas del proyecto.
-        # self.env['project.task.type']
-        # Crear tareas: De cada línea de la orden de trabajo, sacar una tarea.  
-        # self.env['project.task']
+        task_ids = []
+        for task in vals_task:
+            task_ids.append( self.env['project.task'].create(task) )
 
-        self.env['project.project'].create(vals_project)
+        vals.update(
+                {
+                    'project_project_id': proyecto.id,
+                    'technician_id': technician_id
+                }
+            )
+            
         return super(WorkOrder, self).create(vals)
+
+
+        # Meter el delivery address en el work order para poder indicar dónde
+        # se realiza el trabajo. 
+
+
+
