@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+
+
+        <!--ADD project category-->
+        <record model="project.category" id="category_data0">
+            <field name="name">admision</field>
+        </record>
+        <record model="project.category" id="category_data1">
+            <field name="name">refrigeracion</field>
+        </record>
+        <record model="project.category" id="category_data2">
+            <field name="name">lubricacion</field>
+        </record>
+        <record model="project.category" id="category_data3">
+            <field name="name">inyeccion</field>
+        </record>
+        <record model="project.category" id="category_data4">
+            <field name="name">sistema-electrico-motor</field>
+        </record>
+        <record model="project.category" id="category_data5">
+            <field name="name">generador</field>
+        </record>
+
+
+        <!--ADD columns to projects-->
+        <record model="project.task.type" id="stage_data0">
+            <field name="name">PENDIENTE</field>
+            <field name="case_default">True</field>
+            <field name="sequence">1</field>
+        </record>
+        <record model="project.task.type" id="stage_data1">
+            <field name="name">SI</field>
+            <field name="case_default">True</field>
+            <field name="sequence">2</field>
+        </record>
+        <record model="project.task.type" id="stage_data2">
+            <field name="name">NO</field>
+            <field name="case_default">True</field>
+            <field name="sequence">3</field>
+        </record>
+        <record model="project.task.type" id="stage_data3">
+            <field name="name">BIEN</field>
+            <field name="case_default">True</field>
+            <field name="sequence">4</field>
+        </record>
+        <record model="project.task.type" id="stage_data4">
+            <field name="name">REG</field>
+            <field name="case_default">True</field>
+            <field name="sequence">4</field>
+        </record>
+        <record model="project.task.type" id="stage_data5">
+            <field name="name">MAL</field>
+            <field name="case_default">True</field>
+            <field name="sequence">5</field>
+        </record>
+        
+        <!--Cargo las tareas-->
+        <!--<record model="project.task" id="checklist_data">
+            <field name="name">ESTADO SILENCIOSO Y LINEAS</field>
+            <field name="categ_ids">admision</field>
+        </record>-->
+
+    </data>
+</openerp>
