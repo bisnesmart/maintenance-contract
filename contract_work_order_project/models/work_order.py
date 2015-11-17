@@ -50,21 +50,29 @@ class WorkOrder(models.Model):
     technician_id = fields.Many2one(
         string='Técnico asignado',
         comodel_name='res.users',
-        ondelete='set null')
+        ondelete='set null',
+        default=lambda self: self.env.user.id ,
+        )
     # Si es un producto tipo servicio, es una tarea tal y como lo teníamos pensado
-    # Si es un producto tipo 'product', a lo mejor queremos cambiarle el formato, 
+    # Si es un producto tipo 'product', a lo mejor queremos cambiarle el formato,
     # aunque con la clasificación de sí, no, de momento va que chuta, luego podemos
-    # sacar el informe de otra manera sin tocar más 
+    # sacar el informe de otra manera sin tocar más
 
-    # Proyecto asociado a la orden de trabajo. 
-    project_project_id = fields.Many2one(string="Project",
-        comodel_name='project.project',ondelete='set null')
+    # Proyecto asociado a la orden de trabajo.
+    project_project_id = fields.Many2one(
+                            string="Project",
+                            comodel_name='project.project',
+                            ondelete='set null',
+                            help="Proyecto al que añadir las tareas.\n"
+                                "Si no se especifica, se creará uno nuevo.",
+                            )
 
- 
+
     @api.model
     def create(self, vals):
         """
-        Crea un proyecto a partir de los datos de la orden de trabajo
+        Crear orden de trabajo y además un proyecto a partir de los datos de
+        la orden de trabajo.
         """
         vals_project={}
         if vals.get('name', '/') == '/':
@@ -76,37 +84,70 @@ class WorkOrder(models.Model):
         # Crear un proyecto.
         #-------------------
         # Obtener valores que pasarle a la creación del proyecto
-
+        # Contrato asociado al proyecto seleccionado.
+        # Donde ahora devolvemos False, podría ir una función _get_contract
+        # con la que obtener el valor por defecto del contrato, puede ser útil
+        # si se generan tareas a menudo que no correspondan a un contrato.
+        # También sería necesario crear _set_contract para establecer el valor
+        # por defecto a elección del usuario.
         contract_id = vals.get('project_id', False)
         if contract_id:
             contrato = self.env['account.analytic.account'].search(
                 [('id','=',contract_id)]
                 )
-        technician_id = contrato.manager_id.id
+            # Hemos asociado un contrato, recorreremos el iterable de las
+            # líneas de facturación.
+            lineas = contrato.recurring_invoice_line_ids
+        else:
+            # No hemos seleccionado un contrato asociado, creamos las tareas
+            # a partir de las líneas de la orden de trabajo:
+            # lineas = self.env['maintenance.work.line'].search(
+            #     [('id','=',self.line_ids)]
+            #     )
+            lineas = self.env['maintenance.work.line'].browse(
+                self.line_ids
+                )
+
+            # lineas = self.env['maintenance.work.line'].search(
+            # vals.get('line_ids')
 
 
-        vals_project.update(
-                {
-                    'name': vals.get('name', 'Proyecto '+vals.get('id','pendiente')),
-                    'analytic_account_id': contract_id,
-                    'active': True,
-                    'sequence': 2, 
-                    'type_ids': [(6,0,self._get_stages())],
-                    'use_tasks': True,
-                    'use_timesheets': True,
-                    'manager_id': technician_id,
-                    'members': [(6,0,[technician_id])],
+        # El técnico será por defecto el usuario activo.
+        values_to_write ={
+                            'name': vals.get('name',
+                                        'Proyecto '+vals.get('id','pendiente')),
+                            'analytic_account_id': contract_id,
+                            'active': True,
+                            'sequence': 2,
+                            'type_ids': [(6,0,self._get_stages())],
+                            'use_tasks': True,
+                            'use_timesheets': True,
+                            'manager_id': vals.get('technician_id',False),
+                            'members': [(6,0,[vals.get('technician_id',False)])],
+                            #'uid': self.env.user.id,
 
-                }
-            )
+                        }
+        vals_project.update(values_to_write)
         vals_task = []
-        proyecto = self.env['project.project'].create(vals_project)
+        # Se crea el proyecto asociado a la orden de trabajo, solamente
+        # si no se ha seleccionado un proyecto.
 
-        for line in contrato.recurring_invoice_line_ids:
+        # Proyecto asociado seleccionado:
+        related_project = vals.get('project_project_id',False)
+        if related_project:
+            proyecto = self.env['project.project'].search(
+                                        [('id','=',related_project)]
+                                        )
+        elif vals_project:
+            proyecto = self.env['project.project'].create(vals_project)
+
+        # A continuación se generan las tareas a partir de las líneas facturables
+        # dentro de la recurrencia del contrato asociado.
+        for line in lineas:
             nombre_categoria = line.product_id.categ_id.name or 'Categoria'
             project_category_ids = self.env['project.category'].search(
                 [('name','ilike',nombre_categoria)]
-                ) 
+                )
             if project_category_ids:
                 vals_task.append(
                 {
@@ -133,15 +174,12 @@ class WorkOrder(models.Model):
         vals.update(
                 {
                     'project_project_id': proyecto.id,
-                    'technician_id': technician_id
+                    #'technician_id': technician_id
                 }
             )
-            
+
         return super(WorkOrder, self).create(vals)
 
 
         # Meter el delivery address en el work order para poder indicar dónde
-        # se realiza el trabajo. 
-
-
-
+        # se realiza el trabajo.
