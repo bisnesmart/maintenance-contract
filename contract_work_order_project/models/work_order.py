@@ -111,7 +111,6 @@ class WorkOrder(models.Model):
             # lineas = self.env['maintenance.work.line'].search(
             # vals.get('line_ids')
 
-
         # El técnico será por defecto el usuario activo.
         values_to_write ={
                             'name': vals.get('name',
@@ -138,8 +137,15 @@ class WorkOrder(models.Model):
             proyecto = self.env['project.project'].search(
                                         [('id','=',related_project)]
                                         )
-        elif vals_project:
-            proyecto = self.env['project.project'].create(vals_project)
+        else:
+            proyecto = False
+        # Si no se ha seleccionado un proyecto en el desplegable, se estaba
+        # creando uno, esto funciona bien en la creación mediante formulario,
+        # pero en la creación desde el botón de crear trabajos recurrentes
+        # genera una excepción ProgrammingError (faltan valores).
+        # elif vals_project:
+        #
+        #     proyecto = self.env['project.project'].create(vals_project)
 
         # A continuación se generan las tareas a partir de las líneas facturables
         # dentro de la recurrencia del contrato asociado.
@@ -149,21 +155,18 @@ class WorkOrder(models.Model):
                 [('name','ilike',nombre_categoria)]
                 )
             if project_category_ids:
-                vals_task.append(
-                {
-                # product.product no tiene name
-                'name': line.product_id.product_tmpl_id.name or 'Nombre de tarea',
-                'categ_ids': [(6,0,[project_cat.id for project_cat in project_category_ids])],
-                'project_id': proyecto.id,
-                'stage_id': self._get_stages('PENDIENTE')[0]
-                }
-                )
+                task_dict = {}
+                task_dict['name'] = line.product_id.product_tmpl_id.name or 'Nombre de tarea'
+                task_dict['categ_ids'] = [(6,0,[project_cat.id for project_cat in project_category_ids])]
+                task_dict['project_id'] = proyecto.id if proyecto else False
+                task_dict['stage_id'] = self._get_stages('PENDIENTE')[0]
+                vals_task.append(task_dict)
             else:
                 vals_task.append(
                 {
                 # product.product no tiene name
                 'name': line.product_id.product_tmpl_id.name or 'Nombre de tarea',
-                'project_id': proyecto.id,
+                'project_id': proyecto.id or False,
                 'stage_id': self._get_stages('PENDIENTE')[0]
                 })
 
@@ -171,13 +174,12 @@ class WorkOrder(models.Model):
         for task in vals_task:
             task_ids.append( self.env['project.task'].create(task) )
 
-        vals.update(
-                {
-                    'project_project_id': proyecto.id,
-                    #'technician_id': technician_id
-                }
-            )
-
+        # Asignamos valor al campo relacional que nos enlaza la orden de trabajo
+        # con el proyecto, pero si no tenemos proyecto (caso en el que la orden
+        # se crea desde otra función) tenemos que asignarle mejor el valor.
+        vals['project_project_id']=proyecto.id if proyecto else False
+        #'technician_id': technician_id
+                
         return super(WorkOrder, self).create(vals)
 
 
