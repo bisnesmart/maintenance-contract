@@ -19,105 +19,38 @@ class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
     technician_id = fields.Many2many()
 
-    @api.one
-    @api.depends('recurring_invoice_line_ids.recurring_next_work_date')
-    def _compute_next_work_date(self):
-        next_date = False
-        for line in self.recurring_invoice_line_ids:
-            if not next_date or (
-                    line.recurring_next_work_date and
-                    line.recurring_next_work_date < next_date ):
-                next_date = line.recurring_next_work_date
-        self.computed_next_work_date = next_date
-
-    @api.one
-    @api.depends('recurring_invoice_line_ids.recurring_last_date')
-    def _compute_last_work_date(self):
-        last_date = False
-        for line in self.recurring_invoice_line_ids:
-            if not last_date or (
-                    line.recurring_last_work_date and
-                    line.recurring_last_work_date < last_date ):
-                last_date = line.recurring_last_work_date
-        self.computed_next_date = last_date
-
-
-    computed_next_work_date = fields.Date(
-        string='Date of Next Work',
-        compute='_compute_next_work_date')
-    computed_last_work_date = fields.Date(
-        string='Date of Last Work',
-        compute='_compute_last_work_date')
-
-    @api.one
-    def _prepare_work(self):
-        work = self._prepare_work_data()[0]
-        lines = self._prepare_work_lines()[0]
-        work['line_ids'] = (len(lines) > 0) and lines
-        return work
-
-    @api.one
-    def _prepare_work_data(self):
-
-        invoice = {
-           'partner_id': self.partner_id.id,
-           'project_id': self.id,
-           'company_id': self.company_id.id or False,
-           'date': self.computed_next_work_date
-        }
-        return invoice
-
-    @api.one
-    def _prepare_work_lines(self):
-        work_lines = []
-        work_date = self.computed_next_work_date
-        #if work_date <= self.plan_work_until_date():
-        for line in self.recurring_invoice_line_ids:
-            if line.recurring_next_work_date == work_date:
-                if line.periodicity_type not in (
-                            'unique','recursive','month'):
-                        continue
-                line_value = line._prepare_work_line_data()[0]
-                #line.set_next_period_date()
-                work_lines.append((0, 0, line_value))
-        return work_lines
-
-    # def _recurring_create_work(self):
-    #
-    #     context = context or {}
-    #     work_ids = []
-    #     #TODO Recuperar fecha de la compañia
-    #     current_date =  time.strftime('%Y-%m-%d')
-    #     if ids:
-    #         # Este ids es de la signature de la función de la api vieja,
-    #         # por lo que al pasar a la nueva no tiene sentido seguir usándolo,
-    #         # nunca será truthy.
-    #         contract_ids = ids
-    #     else:
-    #         contract_ids = self.search(
-    #             [('computed_next_work_date','<=', current_date),
-    #              ('state','=', 'open'),
-    #              ('recurring_invoices','=', True),
-    #              ('type', '=', 'contract')])
-    #     if contract_ids:
-    #         cr.execute('SELECT company_id, array_agg(id) as ids FROM account_analytic_account WHERE id IN %s GROUP BY company_id', (tuple(contract_ids),))
-    #
-    #         for company_id, ids in cr.fetchall():
-    #             for contract in self.browse(cr, uid, ids, context=dict(context, company_id=company_id, force_company=company_id)):
-    #                 try:
-    #                     work_values = contract._prepare_work()[0]
-    #                     if work_values['line_ids'] != []:
-    #                         work_ids.append(self.pool['maintenance.work.order'].create(cr, uid, work_values, context=context))
-    #
-    #                     if automatic:
-    #                         cr.commit()
-    #                 except Exception:
-    #                     if automatic:
-    #                         cr.rollback()
-    #                     else:
-    #                         raise
-    #     return work_ids
-
+    # Action called by the Close button in contracts:
+    def set_close(self):
+        # Compute pending invoiceable lines after last invoice:
+        #date_format = '%Y-%m-%d'
+        # Date of the next invoice line (invoice or work).
+        # It's a string (!):
+        invoice_date = self.computed_next_date
+        if self.date:
+            ending_date = datetime.strptime(self.date,
+                                            DEFAULT_SERVER_DATE_FORMAT)
+        else:
+            # ending_date is a datetime object
+            ending_date = datetime.today()
+            self.date = fields.Date.context_today()
+        if recurring_invoices:
+            for line in self.recurring_invoice_line_ids:
+                if line.recurring_next_date == invoice_date:
+                    if 'Day' in line.uom_id.name and periodicity_type == 'recursive' and recurring_rule_type == 'monthly':
+                        # calculamos los días transcurridos:
+                        if self.computed_last_date:
+                            line.quantity = int((ending_date - datetime.strptime(
+                                self.computed_last_date,
+                                DEFAULT_SERVER_DATE_FORMAT)).days)
+                        else:
+                            line.quantity = int(
+                                (ending_date - datetime.today()).days
+                            )
+                        line.recurring_next_date = self.date
+        return self.write(
+                        {'state': 'close'},
+                        context=self.env.context
+                        )
 
 class AccountAnalyticInvoiceLine(models.Model):
     _inherit = "account.analytic.invoice.line"
