@@ -4,6 +4,7 @@ from openerp import models, fields, api
 from datetime import datetime
 import time
 from dateutil.relativedelta import relativedelta
+# Default server date format:  "%Y-%m-%d"
 from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
 from openerp.osv import orm
 from openerp.tools.translate import _
@@ -20,6 +21,7 @@ class AccountAnalyticAccount(models.Model):
     technician_id = fields.Many2many()
 
     # Action called by the Close button in contracts:
+    @api.multi
     def set_close(self):
         # Compute pending invoiceable lines after last invoice:
         #date_format = '%Y-%m-%d'
@@ -32,15 +34,21 @@ class AccountAnalyticAccount(models.Model):
         else:
             # ending_date is a datetime object
             ending_date = datetime.today()
-            self.date = fields.Date.context_today()
-        if recurring_invoices:
+            self.date = fields.Date.context_today(self)
+        if self.recurring_invoices:
             for line in self.recurring_invoice_line_ids:
+                # Si la línea tiene como fecha de factura la fecha que corresponde
+                # a la siguiente factura, seguimos procesando la línea:
                 if line.recurring_next_date == invoice_date:
-                    if 'Day' in line.uom_id.name and periodicity_type == 'recursive' and recurring_rule_type == 'monthly':
-                        # calculamos los días transcurridos:
-                        if self.computed_last_date:
+                    # Si la unidad de medida para facturación son días y la
+                    # facturación de la línea es mensual:
+                    if 'Day' in line.uom_id.name and \
+                      line.periodicity_type == 'recursive' and \
+                      line.recurring_rule_type == 'monthly':
+                        # calculamos los días transcurridos desde la última factura:
+                        if line.recurring_last_date:
                             line.quantity = int((ending_date - datetime.strptime(
-                                self.computed_last_date,
+                                line.recurring_last_date,
                                 DEFAULT_SERVER_DATE_FORMAT)).days)
                         else:
                             line.quantity = int(
@@ -73,6 +81,12 @@ class AccountAnalyticInvoiceLine(models.Model):
             self.recurring_next_work_date = self.analytic_account_id.date_start
         if self.work_periodicity_type == 'months':
             self.work_month_ids = False
+
+    @api.onchange('periodicity_type')
+    def on_change_periodicity_type(self):
+        # TODO: Esto puede hacer que se facture en negativo, hay que revisarlo
+        if not self.recurring_last_date:
+            self.recurring_last_date = self.analytic_account_id.date_start
 
     @api.onchange('month_ids')
     def on_change_work_month_ids(self):
