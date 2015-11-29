@@ -18,13 +18,12 @@ WORK_PERIODICITY_TYPE = [
 
 class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
-    technician_id = fields.Many2many()
+    # technician_id = fields.Many2many()
 
     # Action called by the Close button in contracts:
     @api.multi
     def set_close(self):
         # Compute pending invoiceable lines after last invoice:
-        #date_format = '%Y-%m-%d'
         # Date of the next invoice line (invoice or work).
         # It's a string (!):
         invoice_date = self.computed_next_date
@@ -54,7 +53,15 @@ class AccountAnalyticAccount(models.Model):
                             line.quantity = int(
                                 (ending_date - datetime.today()).days
                             )
-                        line.recurring_next_date = self.date
+                        # Para crear la factura automáticamente, se establece
+                        # la fecha de próxima factura en hoy, en lugar de la
+                        # fecha de fin de contrato:
+                        line.recurring_next_date = fields.Date.context_today(self)
+
+        # La fecha se cambia correctamente, pero para que el cron genere la
+        # factura, es necesario que el contrato figure como abierto.
+        # TODO: Hay que forzar la creación de la factura en este momento.
+        self._recurring_create_invoice(self)
         return self.write(
                         {'state': 'close'},
                         context=self.env.context
@@ -81,12 +88,15 @@ class AccountAnalyticInvoiceLine(models.Model):
             self.recurring_next_work_date = self.analytic_account_id.date_start
         if self.work_periodicity_type == 'months':
             self.work_month_ids = False
-
-    @api.onchange('periodicity_type')
-    def on_change_periodicity_type(self):
-        # TODO: Esto puede hacer que se facture en negativo, hay que revisarlo
         if not self.recurring_last_date:
             self.recurring_last_date = self.analytic_account_id.date_start
+
+    # @api.onchange('periodicity_type')
+    # def on_change_periodicity_type(self):
+    #     # TODO: Esto puede hacer que se facture en negativo, hay que revisarlo
+    #     # recurring_last_date en la línea de factura indica la fecha de creación
+    #     # de la última factura.
+
 
     @api.onchange('month_ids')
     def on_change_work_month_ids(self):
