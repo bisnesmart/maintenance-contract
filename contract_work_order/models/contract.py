@@ -47,7 +47,7 @@ class AccountAnalyticAccount(models.Model):
                     line.recurring_last_work_date and
                     line.recurring_last_work_date < last_date ):
                 last_date = line.recurring_last_work_date
-        self.computed_next_date = last_date
+        self.computed_last_work_date = last_date
 
 
 
