@@ -63,19 +63,23 @@ class WorkOrder(models.Model):
                             help="Proyecto al que añadir las tareas.\n"
                                 "Si no se especifica, se creará uno nuevo.",
                             )
+    def _create_project(self):
+        proyecto = self.env['project.project'].create({'name': 'nombre'})
 
     @api.model
-    def create(self, vals):
+    def write(self,vals={}):
         """
         Crear orden de trabajo y además un proyecto a partir de los datos de
         la orden de trabajo.
         """
-        vals_project={}
-        if vals.get('name', '/') == '/':
-            vals['name'] = self.env['ir.sequence'].get(
-                                            'maintenance.work.order') or '/'
-        if 'date' not in vals:
-            vals['date'] = time.strftime('%Y-%m-%d')
+        # Se llama a esta función cada vez que se escribe en el objeto work order,
+        # por lo que hay que tener cuidado para no llamar a la función de crear
+        # una vez detrás de otra
+        # vals_project={}
+        # if vals.get('name', '/') == '/':
+        #     vals['name'] = self.env['ir.sequence'].get('maintenance.work.order') or '/'
+        # if 'date' not in vals:
+        #     vals['date'] = time.strftime('%Y-%m-%d')
 
         # Crear un proyecto.
         #-------------------
@@ -86,83 +90,88 @@ class WorkOrder(models.Model):
         # si se generan tareas a menudo que no correspondan a un contrato.
         # También sería necesario crear _set_contract para establecer el valor
         # por defecto a elección del usuario.
-        contract_id = vals.get('project_id', False)
-        if contract_id:
-            contrato = self.env['account.analytic.account'].search(
-                [('id','=',contract_id)]
-                )
+        # contract_id = vals.get('project_id', False)
+        # if contract_id:
+        #     contrato = self.env['account.analytic.account'].search(
+        #         [('id','=',contract_id)]
+        #         )
             # Hemos asociado un contrato, recorreremos el iterable de las
             # líneas de facturación.
-            lineas = contrato.recurring_invoice_line_ids
-        else:
-            # No hemos seleccionado un contrato asociado, creamos las tareas
-            # a partir de las líneas de la orden de trabajo:
-            lineas = self.env['maintenance.work.line'].browse(
-                self.line_ids
-                )
-        # El técnico será por defecto el usuario activo.
-        values_to_write ={
-                            'name': vals.get('name',
-                                        'Proyecto '+vals.get('id','pendiente')),
-                            'analytic_account_id': contract_id,
-                            'active': True,
-                            'sequence': 2,
-                            'type_ids': [(6,0,self._get_stages())],
-                            'use_tasks': True,
-                            'use_timesheets': True,
-                            'manager_id': vals.get('technician_id',False),
-                            'members': [(6,0,[vals.get('technician_id',False)])],
-                            #'uid': self.env.user.id,
-                        }
-        vals_project.update(values_to_write)
-        vals_task = []
+        #     lineas = contrato.recurring_invoice_line_ids
+        # else:
+        #     # No hemos seleccionado un contrato asociado, creamos las tareas
+        #     # a partir de las líneas de la orden de trabajo:
+        #     lineas = self.env['maintenance.work.line'].browse(
+        #         self.line_ids
+        #         )
+        #     # El técnico será por defecto el usuario activo.
+
+
+        # values_to_write ={
+        #                     'name': vals.get('name',
+        #                                 'Proyecto '+vals.get('id','pendiente')),
+        #                     'analytic_account_id': contract_id,
+        #                     'active': True,
+        #                     'sequence': 2,
+        #                     'type_ids': [(6,0,self._get_stages())],
+        #                     'use_tasks': True,
+        #                     'use_timesheets': True,
+        #                     'manager_id': vals.get('technician_id',False),
+        #                     'members': [(6,0,[vals.get('technician_id',False)])],
+        #                     #'uid': self.env.user.id,
+        #                 }
+        # vals_project.update(values_to_write)
+
+        # vals_task = []
         # Se crea el proyecto asociado a la orden de trabajo, solamente
         # si no se ha seleccionado un proyecto.
         # Proyecto asociado seleccionado:
-        related_project = vals.get('project_project_id',False)
-        proyecto = self.env['project.project'].search(
-                                    [('id','=',related_project)]
-                                        ) if related_project else False
+        # related_project = vals.get('project_project_id',False)
+        # proyecto = self.env['project.project'].search(
+        #                             [('id','=',related_project)]
+        #                                 ) if related_project else False
         # Si no se ha seleccionado un proyecto en el desplegable, se estaba
         # creando uno, esto funciona bien en la creación mediante formulario,
         # pero en la creación desde el botón de crear trabajos recurrentes
         # genera una excepción ProgrammingError (faltan valores).
         # elif vals_project:
         #
-        #     proyecto = self.env['project.project'].create(vals_project)
+        super(WorkOrder, self).write(vals)
+        self._create_project()
+
 
         # A continuación se generan las tareas a partir de las líneas facturables
         # dentro de la recurrencia del contrato asociado.
-        for line in lineas:
-            nombre_categoria = line.product_id.categ_id.name or 'Categoria'
-            project_category_ids = self.env['project.category'].search(
-                [('name','ilike',nombre_categoria)]
-                )
-            if project_category_ids:
-                task_dict = {}
-                task_dict['name'] = line.product_id.product_tmpl_id.name or 'Nombre de tarea'
-                task_dict['categ_ids'] = [(6,0,[project_cat.id for project_cat in project_category_ids])]
-                task_dict['project_id'] = proyecto.id if proyecto else False
-                task_dict['stage_id'] = self._get_stages('PENDIENTE')[0]
-                vals_task.append(task_dict)
-            else:
-                vals_task.append(
-                {
-                # product.product no tiene name
-                'name': line.product_id.product_tmpl_id.name or 'Nombre de tarea',
-                'project_id': proyecto.id if proyecto else False,
-                'stage_id': self._get_stages('PENDIENTE')[0]
-                })
+        # for line in lineas:
+        #     nombre_categoria = line.product_id.categ_id.name or 'Categoria'
+        #     project_category_ids = self.env['project.category'].search(
+        #         [('name','ilike',nombre_categoria)]
+        #         )
+        #     if project_category_ids:
+        #         task_dict = {}
+        #         task_dict['name'] = line.product_id.product_tmpl_id.name or 'Nombre de tarea'
+        #         task_dict['categ_ids'] = [(6,0,[project_cat.id for project_cat in project_category_ids])]
+        #         task_dict['project_id'] = proyecto.id if proyecto else False
+        #         task_dict['stage_id'] = self._get_stages('PENDIENTE')[0]
+        #         vals_task.append(task_dict)
+        #     else:
+        #         vals_task.append(
+        #         {
+        #         # product.product no tiene name
+        #         'name': line.product_id.product_tmpl_id.name or 'Nombre de tarea',
+        #         'project_id': proyecto.id if proyecto else False,
+        #         'stage_id': self._get_stages('PENDIENTE')[0]
+        #         })
+        #
+        # task_ids = []
+        # for task in vals_task:
+        #     task_ids.append( self.env['project.task'].create(task) )
+        #
+        # # Asignamos valor al campo relacional que nos enlaza la orden de trabajo
+        # # con el proyecto, pero si no tenemos proyecto (caso en el que la orden
+        # # se crea desde otra función) tenemos que asignarle mejor el valor.
+        # vals['project_project_id']=proyecto.id if proyecto else False
+        # #'technician_id': technician_id
 
-        task_ids = []
-        for task in vals_task:
-            task_ids.append( self.env['project.task'].create(task) )
-
-        # Asignamos valor al campo relacional que nos enlaza la orden de trabajo
-        # con el proyecto, pero si no tenemos proyecto (caso en el que la orden
-        # se crea desde otra función) tenemos que asignarle mejor el valor.
-        vals['project_project_id']=proyecto.id if proyecto else False
-        #'technician_id': technician_id
-        return super(WorkOrder, self).create(vals)
         # Meter el delivery address en el work order para poder indicar dónde
         # se realiza el trabajo.
