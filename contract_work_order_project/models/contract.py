@@ -80,24 +80,38 @@ class AccountAnalyticAccount(models.Model):
     computed_last_date = fields.Date(
         'Date of Last Invoice',
         compute='_compute_last_date',
-        store=True,
+        store=True
         )
-    # @api.onchange('recurring_invoice_line_ids.recurring_last_date')
-    # def on_change_line_last_date(self):
+
+    @api.onchange('date_start')
+    def onchange_date_start(self):
+        # La función onchange creada en contract_multiple_period hacía que
+        # sea cual sea el valor de la fecha de inicio del contrato, al cambiarlo
+        # se asigna el mismo valor al campo computed_next_date, sin aplicar
+        # ninguna condición.
+        pass
+
 
 class AccountAnalyticInvoiceLine(models.Model):
     _inherit = "account.analytic.invoice.line"
 
 
-
     @api.onchange('periodicity_type')
-    def on_change_work_periodici_type(self):
-        if not self.recurring_last_work_date:
-            self.recurring_next_work_date = self.analytic_account_id.date_start
-        if self.work_periodicity_type == 'months':
-            self.work_month_ids = False
+    def on_change_work_periodicity_type(self):
+        """
+        Get next and last date for recurring invoices from the parent analytic
+        account.
+        """
         if not self.recurring_last_date:
-            self.recurring_last_date = self.analytic_account_id.date_start
+            self.recurring_next_date = self.analytic_account_id.computed_next_date
+            self.recurring_last_date = self.analytic_account_id.computed_last_date or self.analytic_account_id.date_start
+        if self.periodicity_type == 'month':
+            self.month_ids = False
+        if self.periodicity_type == 'none':
+            self.recurring_next_date = False
+            self.recurring_last_date = False
+
+
 
     # @api.onchange('periodicity_type')
     # def on_change_periodicity_type(self):

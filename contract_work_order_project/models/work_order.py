@@ -26,7 +26,6 @@ class WorkOrder(models.Model):
     """ Maintenance Work Order link to project. """
     _inherit = 'maintenance.work.order'
 
-
     def _get_stages(self,names=False):
         """
         Obtener las etapas del proyecto.
@@ -46,12 +45,11 @@ class WorkOrder(models.Model):
 
         return stages
 
-
     technician_id = fields.Many2one(
         string='Técnico asignado',
         comodel_name='res.users',
         ondelete='set null',
-        default=lambda self: self.env.user.id ,
+        # default= lambda self: self.env.uid ,
         )
     # Si es un producto tipo servicio, es una tarea tal y como lo teníamos pensado
     # Si es un producto tipo 'product', a lo mejor queremos cambiarle el formato,
