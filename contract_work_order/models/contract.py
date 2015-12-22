@@ -53,10 +53,15 @@ class AccountAnalyticAccount(models.Model):
 
     computed_next_work_date = fields.Date(
         string='Date of Next Work',
-        compute='_compute_next_work_date')
+        compute='_compute_next_work_date',
+        store=True,
+    )
+
     computed_last_work_date = fields.Date(
         string='Date of Last Work',
-        compute='_compute_last_work_date')
+        compute='_compute_last_work_date',
+        store=True,
+    )
 
     @api.one
     def _prepare_work(self):
