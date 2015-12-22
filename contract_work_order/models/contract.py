@@ -39,7 +39,7 @@ class AccountAnalyticAccount(models.Model):
         self.computed_next_work_date = next_date
 
     @api.one
-    @api.depends('recurring_invoice_line_ids.recurring_last_date')
+    @api.depends('recurring_invoice_line_ids.recurring_last_work_date')
     def _compute_last_work_date(self):
         last_date = False
         for line in self.recurring_invoice_line_ids:
@@ -47,16 +47,18 @@ class AccountAnalyticAccount(models.Model):
                     line.recurring_last_work_date and
                     line.recurring_last_work_date < last_date ):
                 last_date = line.recurring_last_work_date
-        self.computed_next_date = last_date
-
-
+        self.computed_last_work_date = last_date
 
     computed_next_work_date = fields.Date(
         string='Date of Next Work',
-        compute='_compute_next_work_date')
+        compute='_compute_next_work_date',
+        store=True,
+        )
     computed_last_work_date = fields.Date(
         string='Date of Last Work',
-        compute='_compute_last_work_date')
+        compute='_compute_last_work_date',
+        store=True,
+        )
 
     @api.one
     def _prepare_work(self):
