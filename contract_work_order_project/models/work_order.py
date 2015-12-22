@@ -42,7 +42,6 @@ class WorkOrder(models.Model):
             )
             ]
         )
-
         return stages
 
     technician_id = fields.Many2one(
@@ -64,7 +63,6 @@ class WorkOrder(models.Model):
                             help="Proyecto al que añadir las tareas.\n"
                                 "Si no se especifica, se creará uno nuevo.",
                             )
-
 
     @api.model
     def create(self, vals):
@@ -99,16 +97,9 @@ class WorkOrder(models.Model):
         else:
             # No hemos seleccionado un contrato asociado, creamos las tareas
             # a partir de las líneas de la orden de trabajo:
-            # lineas = self.env['maintenance.work.line'].search(
-            #     [('id','=',self.line_ids)]
-            #     )
             lineas = self.env['maintenance.work.line'].browse(
                 self.line_ids
                 )
-
-            # lineas = self.env['maintenance.work.line'].search(
-            # vals.get('line_ids')
-
         # El técnico será por defecto el usuario activo.
         values_to_write ={
                             'name': vals.get('name',
@@ -122,19 +113,16 @@ class WorkOrder(models.Model):
                             'manager_id': vals.get('technician_id',False),
                             'members': [(6,0,[vals.get('technician_id',False)])],
                             #'uid': self.env.user.id,
-
                         }
         vals_project.update(values_to_write)
         vals_task = []
         # Se crea el proyecto asociado a la orden de trabajo, solamente
         # si no se ha seleccionado un proyecto.
-
         # Proyecto asociado seleccionado:
         related_project = vals.get('project_project_id',False)
         proyecto = self.env['project.project'].search(
                                     [('id','=',related_project)]
                                         ) if related_project else False
-
         # Si no se ha seleccionado un proyecto en el desplegable, se estaba
         # creando uno, esto funciona bien en la creación mediante formulario,
         # pero en la creación desde el botón de crear trabajos recurrentes
@@ -175,9 +163,6 @@ class WorkOrder(models.Model):
         # se crea desde otra función) tenemos que asignarle mejor el valor.
         vals['project_project_id']=proyecto.id if proyecto else False
         #'technician_id': technician_id
-
         return super(WorkOrder, self).create(vals)
-
-
         # Meter el delivery address en el work order para poder indicar dónde
         # se realiza el trabajo.

@@ -9,16 +9,8 @@ from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
 from openerp.osv import orm
 from openerp.tools.translate import _
 
-WORK_PERIODICITY_TYPE = [
-    ('none', 'None'),
-    ('unique', 'Unique'),
-    ('recursive', 'Recursive'),
-    ('month', 'Specified Months'),]
-
-
 class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
-    # technician_id = fields.Many2many()
 
     # Action called by the Close button in contracts:
     @api.multi
@@ -67,10 +59,23 @@ class AccountAnalyticAccount(models.Model):
                         context=self.env.context
                         )
 
+    @api.one
+    @api.depends('recurring_invoice_line_ids.recurring_last_date')
+    def _compute_last_date(self):
+        last_date = False
+        for line in self.recurring_invoice_line_ids:
+            if not last_date or (
+                    line.recurring_last_date and
+                    line.recurring_last_date > last_date):
+                last_date = line.recurring_last_date
+        self.computed_last_date = last_date
+
+    # Non-stored field account.analytic.account.computed_next_work_date
+    # cannot be searched.
     computed_next_date = fields.Date(
         'Date of Next Invoice',
         compute='_compute_next_date',
-        store=True
+        store=True,
         )
     computed_last_date = fields.Date(
         'Date of Last Invoice',
@@ -86,14 +91,16 @@ class AccountAnalyticAccount(models.Model):
         # ninguna condición.
         pass
 
+
 class AccountAnalyticInvoiceLine(models.Model):
     _inherit = "account.analytic.invoice.line"
+
 
     @api.onchange('periodicity_type')
     def on_change_work_periodicity_type(self):
         """
         Get next and last date for recurring invoices from the parent analytic
-        account. 
+        account.
         """
         if not self.recurring_last_date:
             self.recurring_next_date = self.analytic_account_id.computed_next_date
