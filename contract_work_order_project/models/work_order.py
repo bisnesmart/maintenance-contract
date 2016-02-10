@@ -166,7 +166,7 @@ class WorkOrder(models.Model):
                 {
                 # product.product no tiene name
                 'name': line.product_id.product_tmpl_id.name or 'Nombre de tarea',
-                'project_id': proyecto.id or False,
+                'project_id': proyecto.id if proyecto else False,
                 'stage_id': self._get_stages('PENDIENTE')[0]
                 })
 
@@ -179,7 +179,7 @@ class WorkOrder(models.Model):
         # se crea desde otra función) tenemos que asignarle mejor el valor.
         vals['project_project_id']=proyecto.id if proyecto else False
         #'technician_id': technician_id
-                
+
         return super(WorkOrder, self).create(vals)
 
 
