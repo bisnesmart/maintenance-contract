@@ -87,10 +87,11 @@ class AccountAnalyticAccount(models.Model):
             if line.work_periodicity_type in (
                         'none'):
                     continue
-            if line.recurring_next_work_date == work_date:
+            elif line.recurring_next_work_date == work_date:
                 line_value = line._prepare_work_line_data()[0]
                 #line.set_next_period_date()
                 work_lines.append((0, 0, line_value))
+                line.set_next_work_period_date()
         return work_lines
 
     def _recurring_create_work(self, cr, uid, ids,
