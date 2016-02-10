@@ -8,12 +8,16 @@
             <field name="arch" type="xml">
                 <form string="Work Order">
                     <header>
-                        <button name="work_done" states="draft" string="Done"
+                        <button name="work_done" states="planned" string="Done"
                             class="oe_highlight" groups="base.group_user" type="object" />
-                        <button name="work_cancel" states="draft" string="Cancel"
+
+                        <button name="work_planned" states="draft" string="Planned"
+                                class="oe_highlight" groups="base.group_user" type="object" />
+
+                        <button name="work_cancel" states="draft,planned" string="Cancel"
                             groups="base.group_user" type="object" />
 
-                        <field name="state" widget="statusbar" statusbar_visible="draft,done,cancel"
+                        <field name="state" widget="statusbar" statusbar_visible="draft,planned,done,cancel"
                             statusbar_colors='{"cancel":"red","done":"blue"}' />
                     </header>
                     <sheet>

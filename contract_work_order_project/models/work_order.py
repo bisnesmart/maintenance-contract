@@ -68,11 +68,26 @@ class WorkOrder(models.Model):
                             )
 
 
-    @api.model
-    def create(self, vals):
+    # @api.model
+    @api.multi
+    def work_planned(self):
+        self.state = 'planned'
+        valores = {
+                    'name': self.name,
+                    'date': self.date,
+                    'project_id': self.project_id.id,
+                    'technician_id': self.technician_id.id,
+
+
+                }
+        self.create_project(valores)
+
+    def create_project(self, vals):
         """
-        Crear orden de trabajo y además un proyecto a partir de los datos de
-        la orden de trabajo.
+        Crear proyecto a partir de los datos de la orden de trabajo.
+        @param: vals
+            diccionario con los valores relevantes de la orden de trabajo que
+            genera el proyecto a crear.
         """
         vals_project={}
         if vals.get('name', '/') == '/':
@@ -137,15 +152,15 @@ class WorkOrder(models.Model):
             proyecto = self.env['project.project'].search(
                                         [('id','=',related_project)]
                                         )
-        else:
-            proyecto = False
+        # else:
+        #     proyecto = False
         # Si no se ha seleccionado un proyecto en el desplegable, se estaba
         # creando uno, esto funciona bien en la creación mediante formulario,
         # pero en la creación desde el botón de crear trabajos recurrentes
         # genera una excepción ProgrammingError (faltan valores).
-        # elif vals_project:
-        #
-        #     proyecto = self.env['project.project'].create(vals_project)
+        elif vals_project:
+
+            proyecto = self.env['project.project'].create(vals_project)
 
         # A continuación se generan las tareas a partir de las líneas facturables
         # dentro de la recurrencia del contrato asociado.
@@ -177,11 +192,7 @@ class WorkOrder(models.Model):
         # Asignamos valor al campo relacional que nos enlaza la orden de trabajo
         # con el proyecto, pero si no tenemos proyecto (caso en el que la orden
         # se crea desde otra función) tenemos que asignarle mejor el valor.
-        vals['project_project_id']=proyecto.id if proyecto else False
-        #'technician_id': technician_id
+        self.project_project_id = proyecto.id if proyecto else False
 
-        return super(WorkOrder, self).create(vals)
-
-
-        # Meter el delivery address en el work order para poder indicar dónde
+        # TODO: Meter el delivery address en el work order para poder indicar dónde
         # se realiza el trabajo.

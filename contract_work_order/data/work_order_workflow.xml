@@ -13,7 +13,7 @@
             <field name="flow_start">True</field>
             <field name="name">draft</field>
         </record>
-        
+
         <record id="act_done" model="workflow.activity">
             <field name="wkf_id" ref="wkf_work_order"/>
             <field name="name">done</field>
@@ -21,7 +21,7 @@
             <field name="kind">function</field>
             <field name="action">work_done()</field>
         </record>
-        
+
         <record id="act_planned" model="workflow.activity">
             <field name="wkf_id" ref="wkf_work_order"/>
             <field name="name">planned</field>
@@ -37,7 +37,7 @@
             <field name="kind">stopall</field>
             <field name="action">work_cancel()</field>
         </record>
-        
+
         <!-- Transistion -->
 
         <record id="trans_draft_planned" model="workflow.transition">
@@ -45,25 +45,25 @@
             <field name="act_to" ref="act_planned"/>
             <field name="signal">work_planned</field>
         </record>
-        
+
         <record id="trans_planned_done" model="workflow.transition">
-            <field name="act_from" ref="act_draft"/>
-            <field name="act_to" ref="act_planned"/>
+            <field name="act_from" ref="act_planned"/>
+            <field name="act_to" ref="act_done"/>
             <field name="signal">work_done</field>
         </record>
-        
+
         <record id="trans_draft_cancel" model="workflow.transition">
             <field name="act_from" ref="act_draft"/>
             <field name="act_to" ref="act_cancel"/>
             <field name="signal">cancel</field>
         </record>
-        
+
         <record id="trans_planned_cancel" model="workflow.transition">
             <field name="act_from" ref="act_planned"/>
             <field name="act_to" ref="act_cancel"/>
             <field name="signal">cancel</field>
         </record>
-        
+
         <record id="trans_cancel_draft" model="workflow.transition">
             <field name="act_from" ref="act_cancel"/>
             <field name="act_to" ref="act_draft"/>
