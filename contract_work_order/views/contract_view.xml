@@ -53,7 +53,8 @@
 							<field name="work_month_ids" class="oe_inline"
 								attrs="{'invisible': [('work_periodicity_type','!=','month')]}"
 								widget='many2many_tags' />
-							<field name="recurring_next_work_date" />
+							<field name="recurring_next_work_date"
+									attrs="{'required': [('work_periodicity_type','!=','none')]}"  />
 							<field name="recurring_last_work_date" readonly="1" />
 							<field name="work_to_invoice"
 								attrs="{'invisible': [('periodicity_type','!=','none')]}" />
