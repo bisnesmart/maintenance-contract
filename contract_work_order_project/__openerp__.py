@@ -8,20 +8,20 @@
     'description':
     """
     When a Work Order is created, generate a project where every line of the
-    work order is a task. 
+    work order is a task.
 
     This module depends on Domatix's set of modules around contract modifications.
     """,
     'images': [],
     'depends': [
             'contract_work_order',
-            'report_project_task',
+            # 'report_project_task',
                 ],
     'category': 'Project Management',
     'data': [
         #'data/task_data.xml',
         'views/work_order_project_view.xml',
-        
+
     ],
     'installable': True,
     'application': False,

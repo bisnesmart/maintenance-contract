@@ -51,7 +51,8 @@ class WorkOrder(models.Model):
         string='Técnico asignado',
         comodel_name='res.users',
         ondelete='set null',
-        default=lambda self: self.env.user.id ,
+        # Esta línea da error al instalar el módulo:
+        # default=lambda self: self.env.user.id ,
         )
     # Si es un producto tipo servicio, es una tarea tal y como lo teníamos pensado
     # Si es un producto tipo 'product', a lo mejor queremos cambiarle el formato,
