@@ -74,10 +74,10 @@ class WorkOrder(models.Model):
     def work_planned(self):
         self.state = 'planned'
         valores = {
-                    'name': self.name,
-                    'date': self.date,
-                    'project_id': self.project_id.id,
-                    'technician_id': self.technician_id.id,
+            'name': self.name,
+            'date': self.date,
+            'project_id': self.project_id.id if self.project_id else False,
+            'technician_id': self.technician_id.id if self.technician_id else False,
 
 
                 }
@@ -137,11 +137,12 @@ class WorkOrder(models.Model):
                             'type_ids': [(6,0,self._get_stages())],
                             'use_tasks': True,
                             'use_timesheets': True,
-                            'manager_id': vals.get('technician_id',False),
-                            'members': [(6,0,[vals.get('technician_id',False)])],
                             #'uid': self.env.user.id,
 
                         }
+        if vals.get('technician_id',False):
+            values_to_write['members'] = [(6,0,[vals.get('technician_id')])]
+            values_to_write['manager_id'] = vals.get('technician_id')
         vals_project.update(values_to_write)
         vals_task = []
         # Se crea el proyecto asociado a la orden de trabajo, solamente
