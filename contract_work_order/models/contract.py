@@ -79,6 +79,7 @@ class AccountAnalyticAccount(models.Model):
     def _prepare_work_lines(self):
         work_lines = []
         work_date = self.computed_next_work_date
+        current_date =  time.strftime('%Y-%m-%d')
         #if work_date <= self.plan_work_until_date():
         for line in self.recurring_invoice_line_ids:
             # Si la recurrencia de la línea de trabajo es 'none', saltar a la
@@ -87,7 +88,11 @@ class AccountAnalyticAccount(models.Model):
             if line.work_periodicity_type in (
                         'none'):
                     continue
-            elif line.recurring_next_work_date == work_date:
+            # TODO:
+            # Cambiar esta condición para permitir una fecha de generación de
+            # tareas a futuro (replicar para facturas)
+            elif line.recurring_next_work_date == work_date and \
+                work_date == current_date:
                 line_value = line._prepare_work_line_data()[0]
                 #line.set_next_period_date()
                 work_lines.append((0, 0, line_value))
